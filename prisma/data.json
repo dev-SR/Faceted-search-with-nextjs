@@ -1,0 +1,31 @@
+{
+	"users": [
+		{
+			"email": "alice@prisma.io",
+			"name": "Alice2",
+			"posts": [
+				{
+					"title": "Check out Prisma with Next.js",
+					"content": "https://www.prisma.io/nextjs",
+					"published": true
+				}
+			]
+		},
+		{
+			"email": "bob@prisma.io",
+			"name": "Bob2",
+			"posts": [
+				{
+					"title": "Follow Prisma on Twitter",
+					"content": "https://twitter.com/prisma",
+					"published": true
+				},
+				{
+					"title": "Follow Nexus on Twitter",
+					"content": "https://twitter.com/nexusgql",
+					"published": true
+				}
+			]
+		}
+	]
+}
