@@ -1,32 +1,36 @@
 import { PrismaClient } from '@prisma/client';
 import * as fs from 'fs/promises'; // Assuming Node.js v14+
 import path from 'path';
-const filePath = path.join(process.cwd(), 'prisma', 'data.json');
 
+const filePath = path.join(process.cwd(), 'prisma', 'data.json');
 const prisma = new PrismaClient();
 
 async function seedData() {
 	try {
 		const jsonData = await fs.readFile(filePath, 'utf-8');
 		const data = JSON.parse(jsonData);
+		console.log('✔ Deleting existing data ...');
+		await prisma.attribute.deleteMany();
+		await prisma.product.deleteMany();
 		console.log(`Start seeding ...`);
-		await prisma.post.deleteMany();
-		await prisma.user.deleteMany();
-		console.log(`❌ Old data deleted`);
 
-		for (const userData of data.users) {
-			const { email, name, posts } = userData;
-			const user = await prisma.user.create({
+		for (const item of data) {
+			await prisma.product.create({
 				data: {
-					email,
-					name,
-					posts: {
-						create: posts
+					title: item.title,
+					price: item.price,
+					category: item.category,
+					brand: item.brand,
+					description: item.description,
+					rating: item.rating ? item.rating : 0,
+					attributes: {
+						create: item.attributes.map((attribute: { name: string; value: string }) => ({
+							name: attribute.name,
+							value: attribute.value
+						}))
 					}
 				}
 			});
-
-			console.log(`User created: ${user.name}`);
 		}
 
 		console.log('✔ Seeding completed successfully!');
@@ -38,55 +42,3 @@ async function seedData() {
 }
 
 seedData();
-
-// import { PrismaClient } from '@prisma/client';
-// const prisma = new PrismaClient();
-// async function main() {
-// 	const alice = await prisma.user.upsert({
-// 		where: { email: 'alice@prisma.io' },
-// 		update: {},
-// 		create: {
-// 			email: 'alice@prisma.io',
-// 			name: 'Alice',
-// 			posts: {
-// 				create: {
-// 					title: 'Check out Prisma with Next.js',
-// 					content: 'https://www.prisma.io/nextjs',
-// 					published: true
-// 				}
-// 			}
-// 		}
-// 	});
-// 	const bob = await prisma.user.upsert({
-// 		where: { email: 'bob@prisma.io' },
-// 		update: {},
-// 		create: {
-// 			email: 'bob@prisma.io',
-// 			name: 'Bob',
-// 			posts: {
-// 				create: [
-// 					{
-// 						title: 'Follow Prisma on Twitter',
-// 						content: 'https://twitter.com/prisma',
-// 						published: true
-// 					},
-// 					{
-// 						title: 'Follow Nexus on Twitter',
-// 						content: 'https://twitter.com/nexusgql',
-// 						published: true
-// 					}
-// 				]
-// 			}
-// 		}
-// 	});
-// 	console.log({ alice, bob });
-// }
-// main()
-// 	.then(async () => {
-// 		await prisma.$disconnect();
-// 	})
-// 	.catch(async (e) => {
-// 		console.error(e);
-// 		await prisma.$disconnect();
-// 		process.exit(1);
-// 	});

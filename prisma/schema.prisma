@@ -10,22 +10,21 @@ datasource db {
     directUrl = env("DATABASE_URL_UNPOOLED") // uses a direct connection
 }
 
-model Post {
-    id        String  @id @default(cuid())
-    title     String
-    content   String?
-    published Boolean @default(false)
-    author    User?   @relation(fields: [authorId], references: [id])
-    authorId  String?
+model Product {
+    id          String      @id @default(uuid())
+    title       String
+    description String?
+    rating      Float
+    price       Float
+    brand       String
+    category    String
+    attributes  Attribute[]
 }
 
-model User {
-    id        String   @id @default(cuid())
-    name      String?
-    email     String?  @unique
-    createdAt DateTime @default(now()) @map(name: "created_at")
-    updatedAt DateTime @updatedAt @map(name: "updated_at")
-    posts     Post[]
-
-    @@map(name: "users")
+model Attribute {
+    id        String  @id @default(uuid())
+    name      String
+    value     String
+    productId String
+    Product   Product @relation(fields: [productId], references: [id])
 }
