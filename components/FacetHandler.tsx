@@ -1,12 +1,12 @@
 'use client';
-import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
-import { Input } from './ui/input';
-import FilterClickable from './FilterClickable';
 import { Facet } from '@/app/page';
+import React from 'react';
+import FilterClickable from './FilterClickable';
 import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Input } from './ui/input';
 
-import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 type SearchRecord = Record<string, string>;
 
 const FacetHandler = ({ facet }: { facet: Facet }) => {
@@ -35,7 +35,6 @@ const FacetHandler = ({ facet }: { facet: Facet }) => {
 				className='w-full'
 				onClick={() => {
 					router.replace(pathname);
-					router.refresh();
 				}}>
 				Reset
 			</Button>

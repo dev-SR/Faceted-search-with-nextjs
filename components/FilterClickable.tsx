@@ -1,8 +1,6 @@
 'use client';
-import React from 'react';
-import { Button } from './ui/button';
-import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Checkbox } from './ui/checkbox';
 
 const FilterClickable = ({
@@ -43,7 +41,6 @@ const FilterClickable = ({
 						params.append(attribute_name, attribute_value);
 					}
 					router.replace(`${pathname}?${params.toString()}`);
-					router.refresh();
 				}}
 			/>
 			<div className={cn('text-primary w-full', count == 0 && 'text-primary/30')}>

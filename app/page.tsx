@@ -1,6 +1,7 @@
 // https://facets.caktus-built.com/
 import FacetHandler from '@/components/FacetHandler';
 import Pagination from '@/components/Pagination';
+import Search from '@/components/Search';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import prisma from '@/lib/prisma';
 import { Attribute, Prisma, Product } from '@prisma/client';
@@ -27,6 +28,7 @@ function transformData(data: SearchParamData): TSearchParamData {
 export default async function Home({ searchParams }: { searchParams?: SearchParamData }) {
 	const params = transformData(searchParams!);
 	const paramsExits = Boolean(Object.keys(params).length);
+	const query = (searchParams?.query as string) || '';
 	const page = searchParams?.page ? parseInt(searchParams.page as string) : 1;
 	const pageSize = 3; // Number of items per page
 	const skip = (page - 1) * pageSize;
@@ -95,8 +97,49 @@ export default async function Home({ searchParams }: { searchParams?: SearchPara
 		facetData = facetData_;
 		// facetData.Category = facetData.Category
 	} else {
-		// build prisma where
+		// Get All attributes facet
+		const attributeCounts = await prisma.attribute.groupBy({
+			by: ['name', 'value']
+		});
+		const attributeFacets = attributeCounts.reduce((acc: Facet, data) => {
+			const name = data.name;
+			const value = data.value;
+			acc[name] = acc[name] || [];
+			acc[name].push({ value, count: 0, selected: false });
+			return acc;
+		}, {});
 
+		// get all brand facet
+		const allBrands = await prisma.product.groupBy({
+			by: ['brand']
+		});
+
+		const brandFacets = allBrands.reduce((acc: Facet, data) => {
+			const brand = data.brand;
+			acc['Brand'] = acc['Brand'] || [];
+			acc['Brand'].push({ value: brand, count: 0, selected: false });
+			return acc;
+		}, {});
+
+		// get all category facet
+		const allCategories = await prisma.product.groupBy({
+			by: ['category']
+		});
+
+		const categoryFacets = allCategories.reduce((acc: Facet, data) => {
+			const category = data.category;
+			acc['Category'] = acc['Category'] || [];
+			acc['Category'].push({ value: category, count: 0, selected: false });
+			return acc;
+		}, {});
+
+		const AllFacet = {
+			...brandFacets,
+			...categoryFacets,
+			...attributeFacets
+		};
+
+		// build prisma where
 		let categoryWhere: Prisma.ProductWhereInput[] = [];
 		if (params.Category) {
 			categoryWhere = params.Category.map((category) => ({
@@ -117,7 +160,8 @@ export default async function Home({ searchParams }: { searchParams?: SearchPara
 
 		let attributeWhere: Prisma.ProductWhereInput[] = [];
 		Object.entries(params).forEach(([key, values]) => {
-			if (key != 'Category' && key != 'Brand' && key != 'page') {
+			// if (key != 'Category' && key != 'Brand' && key != 'page' && key != 'query') {
+			if (Object.keys(attributeFacets).includes(key)) {
 				attributeWhere.push({
 					attributes: {
 						some: {
@@ -131,16 +175,57 @@ export default async function Home({ searchParams }: { searchParams?: SearchPara
 			}
 		});
 
+		let queryWhere: Prisma.ProductWhereInput[] = [];
+		if (query) {
+			queryWhere = [
+				{
+					title: {
+						contains: query,
+						mode: 'insensitive'
+					}
+				},
+				{
+					title: {
+						search: query
+							.replace(/[()|&:*!]/g, '')
+							.trim()
+							.split(/\s+/)
+							.join(' | ')
+					}
+				},
+				{
+					attributes: {
+						some: {
+							value: {
+								contains: query,
+								mode: 'insensitive'
+							}
+						}
+					}
+				},
+				{
+					attributes: {
+						some: {
+							value: {
+								search: query
+									.replace(/[()|&:*!]/g, '')
+									.trim()
+									.split(/\s+/)
+									.join(' | ')
+							}
+						}
+					}
+				}
+			];
+		}
+
 		// Get n products with filter option satisfied
 		productsWithAttributes = await prisma.product.findMany({
 			take: pageSize,
 			skip: skip,
 			where: {
-				AND: [
-					...(categoryWhere && categoryWhere),
-					...(brandWhere && brandWhere),
-					...(attributeWhere && attributeWhere)
-				]
+				AND: [...categoryWhere, ...brandWhere, ...attributeWhere],
+				OR: [...queryWhere]
 			},
 			include: {
 				attributes: true
@@ -149,11 +234,8 @@ export default async function Home({ searchParams }: { searchParams?: SearchPara
 
 		const totalProductsCount = await prisma.product.count({
 			where: {
-				AND: [
-					...(categoryWhere && categoryWhere),
-					...(brandWhere && brandWhere),
-					...(attributeWhere && attributeWhere)
-				]
+				AND: [...categoryWhere, ...brandWhere, ...attributeWhere],
+				OR: [...queryWhere]
 			}
 		});
 		totalPages = Math.ceil(totalProductsCount / pageSize);
@@ -161,11 +243,8 @@ export default async function Home({ searchParams }: { searchParams?: SearchPara
 		// Get facets count with filter option satisfied
 		const FacetCounts = await prisma.product.findMany({
 			where: {
-				AND: [
-					...(categoryWhere && categoryWhere),
-					...(brandWhere && brandWhere),
-					...(attributeWhere && attributeWhere)
-				]
+				AND: [...categoryWhere, ...brandWhere, ...attributeWhere],
+				OR: [...queryWhere]
 			},
 			select: {
 				brand: true,
@@ -217,48 +296,6 @@ export default async function Home({ searchParams }: { searchParams?: SearchPara
 
 			return acc;
 		}, {});
-
-		// Get All attributes facet
-		const attributeCounts = await prisma.attribute.groupBy({
-			by: ['name', 'value']
-		});
-		const attributeFacets = attributeCounts.reduce((acc: Facet, data) => {
-			const name = data.name;
-			const value = data.value;
-			acc[name] = acc[name] || [];
-			acc[name].push({ value, count: 0, selected: false });
-			return acc;
-		}, {});
-
-		// get all brand facet
-		const allBrands = await prisma.product.groupBy({
-			by: ['brand']
-		});
-
-		const brandFacets = allBrands.reduce((acc: Facet, data) => {
-			const brand = data.brand;
-			acc['Brand'] = acc['Brand'] || [];
-			acc['Brand'].push({ value: brand, count: 0, selected: false });
-			return acc;
-		}, {});
-
-		// get all category facet
-		const allCategories = await prisma.product.groupBy({
-			by: ['category']
-		});
-
-		const categoryFacets = allCategories.reduce((acc: Facet, data) => {
-			const category = data.category;
-			acc['Category'] = acc['Category'] || [];
-			acc['Category'].push({ value: category, count: 0, selected: false });
-			return acc;
-		}, {});
-
-		const AllFacet = {
-			...brandFacets,
-			...categoryFacets,
-			...attributeFacets
-		};
 
 		const updateFacets = (AllFacet: Facet, facetsFound: Facet): Facet => {
 			const updatedAllFacet: Facet = { ...AllFacet };
@@ -320,6 +357,9 @@ export default async function Home({ searchParams }: { searchParams?: SearchPara
 	return (
 		<div className='min-h-screen flex items-start pt-8 space-x-4'>
 			<div className='flex flex-col space-y-4'>
+				<div>
+					<Search />
+				</div>
 				{productsWithAttributes.map((product) => (
 					<Card key={product.id}>
 						<CardHeader className='py-1'>

@@ -1,9 +1,5 @@
 'use client';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-// Pagination.tsx
-
-import React from 'react';
-
 interface PaginationProps {
 	currentPage: number;
 	totalPages: number;
